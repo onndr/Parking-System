@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>ZeroJeden Parking</title>
+    <style>
+        html, body{
+            width: 100%;
+            /* display: flex; */
+            /* flex-direction: row; */
+            /* justify-content: space-evenly; */
+            background-color: rgba(197, 234, 250);
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        }
+
+        #parkingsContainer{
+            font-size: large;
+            width: 50%;
+            height: 200px;
+            float: left;
+        }
+
+        #spaces{
+            width: 50%;
+            height: 200px;
+            float: left;
+        }
+        h3{
+            font-size: 32px;
+            /* font-weight: 800; */
+        }
+        #totalFreeSpaces{
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1 id='totalFreeSpaces'>Total free spaces at the moment: {{total_free_spaces}}</h1>
+    </div>
+    <div id='parkingsContainer'>
+        <h3>Parkings:</h3>
+        <ul id='parkings'>
+            {%for parking in parkings%}
+                <li id="{{parking.ParkingId}}" onclick='setParkingSpaces(event)'>
+                    {{parking['City']}}, {{parking['Street']}} {{parking['Number']}}
+                    Free spaces: {{parking['Free spaces number']}}
+                    <br>
+                </li>
+            {%endfor%}
+        </ul>
+    </div>
+
+    <div id='spaces'>
+        <h3>Spaces: </h3>
+        <ul id='parkingSpaces'></ul>
+    </div>
+
+    <script>
+        const MAIN_URL = 'https://zerojeden-web-server.azurewebsites.net'
+        const GET_PARKINGS_URL = `${MAIN_URL}/api/parking`
+        const GET_PARKING_SPACES_URL = `${MAIN_URL}/api/parking-space`
+        const GET_TOTAL_FREE_SPACES_URL = `${MAIN_URL}/api/parking-space/free-spaces`
+        const GET_PARKING_FREE_SPACES_URL = `${MAIN_URL}/api/parking-space/free-spaces`
+        let activeParkingId = undefined
+
+        async function getParkingData(parkingId){
+            response = await fetch(`${GET_PARKING_SPACES_URL}/${parkingId}`)
+            data = await response.json()
+            return data
+        }
+
+        async function getTotalFreeSpacesNumber(){
+            response = await fetch(GET_TOTAL_FREE_SPACES_URL)
+            data = await response.json()
+            return data
+        }
+
+        async function getParkingFreeSpaces(parkingId){
+            response = await fetch(`${GET_PARKING_FREE_SPACES_URL}/${parkingId}`)
+            data = await response.json()
+            return data
+        }
+
+        async function setTotalSpacesLabel(n){
+            element = document.getElementById('totalFreeSpaces')
+            text = element.innerText.replace(RegExp('[0-9]'), n)
+            element.innerText = text
+        }
+
+        async function setParkingSpaces(event){
+            element = event.target
+            parkingId = element.id
+            activeParkingId = parkingId
+
+            unsetAllYellow(document.getElementById('parkings'))
+            setYellow(element)
+
+            spaces = await getParkingData(parkingId)
+
+            listElement = document.getElementById('parkingSpaces')
+            listElement.remove()
+
+            listElement = document.createElement('ul')
+            listElement.id = 'parkingSpaces'
+
+            document.getElementById('spaces').append(listElement)
+
+            for (space of spaces){
+                li = document.createElement('li')
+                text = `Parking space number ${space['ParkingSpaceId']}`
+                li.innerText = text
+                if (space['IsTaken'] == false) {
+                    setGreen(li)
+                } else {
+                    setRed(li)
+                }
+                listElement.appendChild(li)
+            }
+        }
+
+        async function refreshInfo(){
+            n = await getTotalFreeSpacesNumber()
+            setTotalSpacesLabel(n)
+
+            parkingsList = document.getElementById('parkings')
+            for (child of parkingsList.children){
+                freeSpacesNumber = await getParkingFreeSpaces(child.id)
+                text = child.innerText.replace(RegExp('Free spaces number: [0-9]+'), `Free spaces number: ${freeSpacesNumber}`)
+                child.innerText = text
+            }
+        }
+
+        function setRed(el){
+            el.style.color = 'red'
+        }
+
+        function setGreen(el){
+            el.style.color = 'green'
+        }
+
+        function setYellow(el){
+            el.style.color = '#B68D40'
+        }
+
+        function unsetAllYellow(list){
+            for (el of list.children){
+                el.style.color = 'black'
+            }
+        }
+
+        async function refreshAllInfo(){
+            await refreshInfo()
+            if (activeParkingId){
+                await setParkingSpaces({target: document.getElementById(activeParkingId)})
+            }
+        }
+
+        setInterval(refreshAllInfo, 10000)
+    </script>
+</body>
+</html>
