@@ -1,6 +1,7 @@
 # PZSP parking
 
 A group project on 1 semester at WUT
+
 System shows actual state of parking spaces
 
 Technologies:
